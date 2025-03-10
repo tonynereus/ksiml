@@ -6,8 +6,8 @@ import { useSelector } from "react-redux";
 
 
 import ProtectedRoute from "./components/ProtectedRoute";
-import Login from "./Pages/Login";
-import Dashboard from "./Pages/Dashboard";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
 import Home from "./pages/dashboardPages/Home";
 import CreateAgent from "./pages/dashboardPages/CreateAgents";
 import "./App.css";
