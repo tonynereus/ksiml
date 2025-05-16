@@ -1,33 +1,82 @@
-import React, { useState } from "react";
-import { Card, Button, Modal, InputNumber, Typography, message } from "antd";
+import React, { useEffect, useState } from "react";
+import { Card, Button, Modal, InputNumber, Typography, message, Spin } from "antd";
 import { TagsFilled } from "@ant-design/icons";
+
+import { fetchWithAuth } from "../../redux/store";
+import apis from "../../utils/apis";
 
 const { Title, Text } = Typography;
 
 const ManageTickets = () => {
-    const [tickets, setTickets] = useState([
-        { id: 1, name: "Motocycle (Urban)", price: 500 },
-        { id: 2, name: "Taxi (Cab, Urban)", price: 500 },
-        { id: 3, name: "Keke Napep (Tricycle, Urban)", price: 500 }
-    ]);
+
+    const fetchTickets = async () => {
+        try {
+            const res = await fetchWithAuth(apis.getTickets, "GET");
+            if (res.status) {
+                setTickets(res.data.tickets);
+            } else {
+                message.error(res.message || "Failed to fetch agents");
+            }
+        } catch (err) {
+            message.error("Error fetching agents");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    const [reload, setReload] = useState(false);
+    const [tickets, setTickets] = useState();
 
     const [selectedTicket, setSelectedTicket] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [newPrice, setNewPrice] = useState(500);
     const [updating, setUpdating] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+
+    useEffect(() => {
+        fetchTickets();
+    }, [reload]);
 
     const openModal = (ticket) => {
         setSelectedTicket(ticket);
-        setNewPrice(ticket.price);
+        setNewPrice(ticket.ticket_price);
         setModalVisible(true);
     };
 
-    const handleUpdatePrice = () => {
+    const handleUpdatePrice = async () => {
+        setUpdating(true);
+        try {
+            const res = await fetchWithAuth(apis.updateTicketPrice, "POST", {
+                ticket_id: selectedTicket.id,
+                price: newPrice,
+            });
+
+            if (res.status) {
+                message.success(res.message || "Ticket price updated successfully!");
+                setTickets((prevTickets) =>
+                    prevTickets.map((ticket) =>
+                        ticket.id == selectedTicket.id ? { ...ticket, ticket_price: newPrice } : ticket
+                    )
+                );
+                setModalVisible(false);
+            } else {
+                message.error(res.message || "Failed to update ticket price");
+            }
+        } catch (err) {
+            message.error("Error updating ticket price");
+        } finally {
+            setUpdating(false);
+        }
+    };
+
+    const handleUpdatePriceText = () => {
         setUpdating(true);
         setTimeout(() => {
             setTickets((prevTickets) =>
                 prevTickets.map((ticket) =>
-                    ticket.id === selectedTicket.id ? { ...ticket, price: newPrice } : ticket
+                    ticket.id == selectedTicket.id ? { ...ticket, price: newPrice } : ticket
                 )
             );
             message.success("Ticket price updated successfully!");
@@ -40,7 +89,10 @@ const ManageTickets = () => {
         <div style={{ padding: "30px", textAlign: "center" }}>
             <Title level={3}>Manage Tickets</Title>
             <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "20px" }}>
-                {tickets.map((ticket) => (
+                {loading &&
+                    <Spin size="large" />
+                }
+                {tickets && tickets.map((ticket) => (
                     <Card
                         key={ticket.id}
                         style={{ width: 230, borderRadius: 10, textAlign: "center", boxShadow: "0 4px 8px rgba(0,0,0,0.1)" }}
@@ -48,8 +100,8 @@ const ManageTickets = () => {
                         <div className="d-flex justify-content-center">
                             <TagsFilled style={{ fontSize: "40px", color: "#1890ff", marginBottom: "10px" }} />
                         </div>
-                        <Text strong>{ticket.name}</Text>
-                        <p style={{ marginBottom: "10px" }}>Price: ₦{ticket.price}</p>
+                        <Text strong>{ticket.ticket_name}</Text>
+                        <p style={{ marginBottom: "10px" }}>Price: ₦{ticket.ticket_price}</p>
                         <Button type="primary" block onClick={() => openModal(ticket)}>
                             Manage Ticket
                         </Button>
@@ -66,13 +118,13 @@ const ManageTickets = () => {
             >
                 {selectedTicket && (
                     <>
-                        <p><strong>Ticket:</strong> {selectedTicket.name}</p>
-                        <p><strong>Current Price:</strong> ₦{selectedTicket.price}</p>
+                        <p><strong>Ticket:</strong> {selectedTicket.ticket_name}</p>
+                        <p><strong>Current Price:</strong> ₦{selectedTicket.ticket_price}</p>
 
                         <Text>Set New Price:</Text>
                         <InputNumber
                             style={{ width: "100%", marginBottom: "10px" }}
-                            min={100}
+                            min={50}
                             value={newPrice}
                             onChange={setNewPrice}
                         />
